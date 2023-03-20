@@ -1,13 +1,16 @@
 package io.layercraft
 
+import org.apache.pulsar.client.api.MessageListener
 import org.apache.pulsar.client.api.Producer
 import org.apache.pulsar.client.api.PulsarClient
 import org.apache.pulsar.client.api.Schema
+import org.apache.pulsar.client.api.SubscriptionType
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
-object CommunicationsLib {
+object PulsarLib {
 
-    val id: UUID = UUID.randomUUID()
+    private val id: UUID = UUID.randomUUID()
 
     fun createClient(): PulsarClient {
         return PulsarClient.builder()
@@ -15,7 +18,7 @@ object CommunicationsLib {
             .build()
     }
 
-    fun createProducer(topic: String): Producer<String> {
+    fun createStringProducer(topic: String): Producer<String> {
         val client = createClient()
 
         return client.newProducer(Schema.STRING)
@@ -23,25 +26,27 @@ object CommunicationsLib {
             .create()
     }
 
-    fun createProducer(client: PulsarClient, topic: String): Producer<String> {
+    fun createStringProducer(client: PulsarClient, topic: String): Producer<String> {
         return client.newProducer(Schema.STRING)
             .topic(topic)
             .create()
     }
 
-    inline fun <reified T> createProducer(): Producer<T> {
+    inline fun <reified T> createProducer(topic: String): Producer<T> {
         val client = createClient()
 
         return client.newProducer(Schema.AVRO(T::class.java))
-            .topic("my-topic")
+            .topic(topic)
             .create()
     }
 
-    inline fun <reified T> createProducer(client: PulsarClient): Producer<T> {
+    inline fun <reified T> createProducer(client: PulsarClient, topic: String): Producer<T> {
         return client.newProducer(Schema.AVRO(T::class.java))
-            .topic("my-topic")
+            .topic(topic)
             .create()
     }
+
+
 }
 
 fun main() {
@@ -50,11 +55,14 @@ fun main() {
         .build()
 
     val producer: Producer<String> = client.newProducer(Schema.STRING)
-        .topic("my-topic")
+        .topic(Topics.API.topic)
         .create()
 
-    for (i in 0..10_000_000) {
-        producer.sendAsync("Hello World $i")
+    repeat(100) {
+        println("Sending message $it")
+        producer.newMessage()
+            .key("bedwars")
+            .value("Hello World")
     }
 
     producer.close()
